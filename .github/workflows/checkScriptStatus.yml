@@ -36,45 +36,43 @@ jobs:
           import datetime
           import subprocess
 
-          # 1. 获取更改的文件列表
+          # 1. 获取本次 Push 更改的文件列表
           try:
               diff_cmd = ['git', 'diff', '--name-only', 'HEAD~1', 'HEAD']
               result = subprocess.run(diff_cmd, capture_output=True, text=True, check=True)
               changed_files = result.stdout.splitlines()
-          except subprocess.CalledProcessError:
-              diff_cmd = ['git', 'diff', '--name-only', '--cached']
-              result = subprocess.run(diff_cmd, capture_output=True, text=True, check=True)
-              changed_files = result.stdout.splitlines()
           except Exception:
-              changed_files = []
+              try:
+                  diff_cmd = ['git', 'diff', '--name-only', '--cached']
+                  result = subprocess.run(diff_cmd, capture_output=True, text=True, check=True)
+                  changed_files = result.stdout.splitlines()
+              except Exception:
+                  changed_files = []
 
-          # 2. 筛选逻辑：必须在 daily 目录下，且不是 notify.py 和 .md 文件
-          target_files = []
+          now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+          
+          # 2. 提取变更文件中的 Env 名称及更新时间
+          updates = {}
           for f in changed_files:
-              # 检查文件是否在 daily 目录下且文件存在
               if f.startswith('daily/') and os.path.exists(f):
                   filename = os.path.basename(f)
-                  # 排除 notify.py 和所有 .md 后缀文件
                   if filename != 'notify.py' and not f.endswith('.md'):
-                      target_files.append(f)
+                      with open(f, 'r', encoding='utf-8') as file:
+                          match = re.search(r'Env\s*\(\s*["\']([^"\']+)["\']\s*\)', file.read())
+                          if match:
+                              updates[match.group(1)] = now
 
-          if not target_files:
-              print("没有检测到符合条件的脚本文件变更（排除 notify.py 和 md），退出。")
-              exit(0)
-
-          # 3. 提取 Env 名称
-          now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-          updates = {}
-          for f in target_files:
-              with open(f, 'r', encoding='utf-8') as file:
-                  content = file.read()
-                  match = re.search(r'Env\s*\(\s*["\']([^"\']+)["\']\s*\)', content)
-                  if match:
-                      updates[match.group(1)] = now
-
-          if not updates:
-              print("变更的脚本中未找到 Env 标签，退出。")
-              exit(0)
+          # 3. 遍历 daily 目录获取所有的 Env（用于找出表格中缺失的）
+          all_envs = set()
+          if os.path.exists('daily'):
+              for root, _, files in os.walk('daily'):
+                  for file in files:
+                      if file != 'notify.py' and not file.endswith('.md'):
+                          fpath = os.path.join(root, file).replace('\\', '/')
+                          with open(fpath, 'r', encoding='utf-8') as f:
+                              match = re.search(r'Env\s*\(\s*["\']([^"\']+)["\']\s*\)', f.read())
+                              if match:
+                                  all_envs.add(match.group(1))
 
           # 4. 修改 README.md
           readme_path = 'README.md'
@@ -85,8 +83,8 @@ jobs:
           with open(readme_path, 'r', encoding='utf-8') as f:
               full_text = f.read()
 
-          start_tag = "<!-- README_TABLE_START -->"
-          end_tag   = "<!-- README_TABLE_END -->"
+          start_tag = ""
+          end_tag   = ""
 
           if start_tag not in full_text or end_tag not in full_text:
               print("错误：未找到锚点标记！")
@@ -113,25 +111,36 @@ jobs:
 
           existing_names = set()
           new_body_lines = []
+          
+          # A. 处理表格中已存在的脚本
           for line in body_lines:
               parts = [p.strip() for p in line.split('|')]
               if len(parts) >= 4:
                   name = parts[1]
                   existing_names.add(name)
+                  # 如果该脚本在本次 push 中被修改，更新时间
                   if name in updates:
                       line = f"| {name} | {updates[name]} | ✅ |"
               new_body_lines.append(line)
 
+          # B. 添加本次修改引发的新增脚本
           for name, tm in updates.items():
               if name not in existing_names:
                   new_body_lines.append(f"| {name} | {tm} | ✅ |")
+                  existing_names.add(name)
+
+          # C. 添加存在于 daily 目录但 README 表格中缺失的脚本
+          for name in all_envs:
+              if name not in existing_names:
+                  new_body_lines.append(f"| {name} | {now} | ✅ |")
+                  existing_names.add(name)
 
           final_table = "\n".join(header + separator + new_body_lines)
           final_content = f"{pre_part}{start_tag}\n{final_table}\n{end_tag}{post_part}"
 
           with open(readme_path, 'w', encoding='utf-8') as f:
               f.write(final_content)
-          print("README.md 更新成功。")
+          print("README.md 处理完成。")
           EOF
 
           python update_readme.py

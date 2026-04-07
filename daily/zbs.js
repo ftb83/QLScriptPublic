@@ -2,14 +2,11 @@
 ------------------------------------------
 @Author: sm
 @Date: 2024.06.07 19:15
-@Description: 蔚来APP签到
+@Description:  植白说小程序
 cron: 30 8 * * *
 ------------------------------------------
 #Notice:   
-变量名 weilai
-APP抓请求头app.nio.com 请求头里面的authorization 去掉Bearer后面部分就是变量值，
-或者抓网页版https://www.nio.cn/ 右上角登录后请求头里面的authorization  去掉Bearer后面部分就是变量值，
-多个账号换行或者&分隔
+
 ⚠️【免责声明】
 ------------------------------------------
 1、此脚本仅用于学习研究，不保证其合法性、准确性、有效性，请根据情况自行判断，本人对此不承担任何保证责任。
@@ -22,8 +19,8 @@ APP抓请求头app.nio.com 请求头里面的authorization 去掉Bearer后面部
 */
 
 const { Env } = require("../tools/env")
-const $ = new Env("蔚来签到");
-let ckName = `weilai`;
+const $ = new Env("植白说小程序");
+let ckName = `zbs`;
 const strSplitor = "#";
 const axios = require("axios");
 const defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.31(0x18001e31) NetType/WIFI Language/zh_CN miniProgram"
@@ -36,43 +33,64 @@ class Task {
         this.token = this.user[0];
 
     }
+    request(options) {
+        let baseHeraders = {
 
+            "accept": "*/*",
+            "accept-language": "zh-CN,zh;q=0.9",
+            "content-type": "application/json",
+            "priority": "u=1, i",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-dts-token": "" + this.token,
+            "xweb_xhr": "1",
+
+            "User-Agent": defaultUserAgent,
+        }
+        options.headers = Object.assign(baseHeraders, options.headers)
+        return axios.request(options)
+    }
     async run() {
+
         await this.signIn()
     }
 
     async signIn() {
         let options = {
-            method: 'POST',
-            url: `https://gateway-front-external.nio.com/moat/10086/c/award_cn/checkin?app_id=10086&timestamp=${Date.now()}`,
-            headers: {
-                "authority": "gateway-front-external.nio.com",
-                "content-type": "application/x-www-form-urlencoded",
-                "accept": "application/json, text/plain, */*",
-                "authorization": 'Bearer ' + this.token,
-                "sec-fetch-site": "cross-site",
-                "priority": "u=3, i",
-                "accept-language": "zh-CN,zh-Hans;q=0.9",
-                "accept-encoding": "gzip, deflate, br",
-                "sec-fetch-mode": "cors",
-                "origin": "null",
-                "user-agent": defaultUserAgent,
-                "sec-fetch-dest": "empty"
-            },
-            data: "event=checkin"
+            method: 'GET',
+            url: "https://www.kozbs.com/demo/wx/home/sign?userId=",
+            headers: {},
+
         };
-        let { data: result } = await axios.request(options);
-        if (result?.result_code == 'success') {
-            $.log(`🌸账号[${this.index}]` + `${result.data.tip}🎉`);
+        let { data: result } = await this.request(options);
+        if (result?.errno == '0') {
+            //打印签到结果
+            $.log(`🌸账号[${this.index}]` + `签到成功🎉`);
         } else {
-            $.log(`🌸账号[${this.index}] 签到-失败:${JSON.stringify(result)}❌`)
+            $.log(`🌸账号[${this.index}] 签到-失败:${result.errmsg}❌`)
         }
 
 
 
 
     }
-    
+    async getPoints() {
+        let options = {
+            method: 'GET',
+            url: "https://www.kozbs.com/demo/wx/user/getUserIntegral?userId=",
+            headers: {},
+
+        };
+        let { data: result } = await this.request(options);
+        if (result?.errno == '0') {
+            //打印签到结果
+            $.log(`🌸账号[${this.index}]` + `当前积分` + `${result.data.integer}🎉`);
+        } else {
+            $.log(`🌸账号[${this.index}] 获取积分-失败:${result.errmsg}❌`)
+        }
+    }
+
 
 
 

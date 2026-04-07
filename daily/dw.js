@@ -302,13 +302,19 @@ class Task {
     .finally(() => $.done());
 
 async function getNotice() {
-    let options = {
-        url: `https://ghproxy.net/https://raw.githubusercontent.com/smallfawn/Note/refs/heads/main/Notice.json`,
-        headers: {
-            "User-Agent": defaultUserAgent,
-        }
-    }
-    let { data: res } = await axios.request(options);
-    $.log(res)
-    return res
+	try {
+		let options = {
+			url: `https://ghproxy.net/https://raw.githubusercontent.com/smallfawn/Note/refs/heads/main/Notice.json`,
+			headers: {
+				"User-Agent": defaultUserAgent,
+			},
+            timeout:3000
+		}
+		let {
+			data: res
+		} = await axios.request(options);
+		$.log(res)
+		return res
+	} catch (e) {}
+
 }

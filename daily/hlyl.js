@@ -2,14 +2,13 @@
 ------------------------------------------
 @Author: sm
 @Date: 2024.06.07 19:15
-@Description: 蔚来APP签到
+@Description:  活力伊利小程序签到
 cron: 30 8 * * *
 ------------------------------------------
 #Notice:   
-变量名 weilai
-APP抓请求头app.nio.com 请求头里面的authorization 去掉Bearer后面部分就是变量值，
-或者抓网页版https://www.nio.cn/ 右上角登录后请求头里面的authorization  去掉Bearer后面部分就是变量值，
-多个账号换行或者&分隔
+变量名 hlyl
+抓取 https://msmarket.msx.digitalyili.com/请求头access-token 多账户&或换行
+
 ⚠️【免责声明】
 ------------------------------------------
 1、此脚本仅用于学习研究，不保证其合法性、准确性、有效性，请根据情况自行判断，本人对此不承担任何保证责任。
@@ -22,8 +21,8 @@ APP抓请求头app.nio.com 请求头里面的authorization 去掉Bearer后面部
 */
 
 const { Env } = require("../tools/env")
-const $ = new Env("蔚来签到");
-let ckName = `weilai`;
+const $ = new Env("活力伊利小程序");
+let ckName = `hlyl`;
 const strSplitor = "#";
 const axios = require("axios");
 const defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.31(0x18001e31) NetType/WIFI Language/zh_CN miniProgram"
@@ -38,41 +37,51 @@ class Task {
     }
 
     async run() {
+
         await this.signIn()
     }
 
     async signIn() {
         let options = {
             method: 'POST',
-            url: `https://gateway-front-external.nio.com/moat/10086/c/award_cn/checkin?app_id=10086&timestamp=${Date.now()}`,
+            url: `https://msmarket.msx.digitalyili.com/gateway/api/member/sign/config`,
             headers: {
-                "authority": "gateway-front-external.nio.com",
-                "content-type": "application/x-www-form-urlencoded",
-                "accept": "application/json, text/plain, */*",
-                "authorization": 'Bearer ' + this.token,
-                "sec-fetch-site": "cross-site",
-                "priority": "u=3, i",
-                "accept-language": "zh-CN,zh-Hans;q=0.9",
-                "accept-encoding": "gzip, deflate, br",
+
+                "accept": "*/*",
+                "accept-language": "zh-CN,zh;q=0.9",
+                "access-token": "" + this.token,
+                "atv-page": "",
+                "content-type": "application/json",
+                "forward-appid": "",
+                "priority": "u=1, i",
+                "register-source": "",
+                "scene": "1145",
+                "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
-                "origin": "null",
-                "user-agent": defaultUserAgent,
-                "sec-fetch-dest": "empty"
-            },
-            data: "event=checkin"
-        };
+                "sec-fetch-site": "cross-site",
+                "source-type": "",
+                "tenant-id": "",
+                "xweb_xhr": "1"
+
+
+                , data: {
+
+                }
+            }
+        }
         let { data: result } = await axios.request(options);
-        if (result?.result_code == 'success') {
-            $.log(`🌸账号[${this.index}]` + `${result.data.tip}🎉`);
+        if (result?.status == true) {
+            //打印签到结果
+            $.log(`🌸账号[${this.index}]` + `🕊签到获得${result.data.dailySignConfig.bonusPoint}分🎉`);
         } else {
-            $.log(`🌸账号[${this.index}] 签到-失败:${JSON.stringify(result)}❌`)
+            $.log(`🌸账号[${this.index}] 签到-失败:${result.error}❌`)
         }
 
 
 
 
     }
-    
+
 
 
 

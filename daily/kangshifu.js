@@ -2,14 +2,13 @@
 ------------------------------------------
 @Author: sm
 @Date: 2024.06.07 19:15
-@Description: 蔚来APP签到
-cron: 30 8 * * *
+@Description:  康师傅畅饮社
+cron: 30 10 * * *
 ------------------------------------------
 #Notice:   
-变量名 weilai
-APP抓请求头app.nio.com 请求头里面的authorization 去掉Bearer后面部分就是变量值，
-或者抓网页版https://www.nio.cn/ 右上角登录后请求头里面的authorization  去掉Bearer后面部分就是变量值，
-多个账号换行或者&分隔
+康师傅畅饮社小程序
+变量名 ksfcys
+账号格式：抓https://club.biqr.cn/api/请求头token 多账户&或换行
 ⚠️【免责声明】
 ------------------------------------------
 1、此脚本仅用于学习研究，不保证其合法性、准确性、有效性，请根据情况自行判断，本人对此不承担任何保证责任。
@@ -22,57 +21,52 @@ APP抓请求头app.nio.com 请求头里面的authorization 去掉Bearer后面部
 */
 
 const { Env } = require("../tools/env")
-const $ = new Env("蔚来签到");
-let ckName = `weilai`;
+const $ = new Env("康师傅畅饮社");
+let ckName = `ksfcys`;
 const strSplitor = "#";
 const axios = require("axios");
 const defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.31(0x18001e31) NetType/WIFI Language/zh_CN miniProgram"
 
 
 class Task {
-    constructor(env) {
-        this.index = $.userIdx++
-        this.user = env.split(strSplitor);
-        this.token = this.user[0];
+	constructor(env) {
+		this.index = $.userIdx++
+		this.user = env.split(strSplitor);
+		this.token = this.user[0];
 
-    }
+	}
 
-    async run() {
-        await this.signIn()
-    }
+	async run() {
 
-    async signIn() {
-        let options = {
-            method: 'POST',
-            url: `https://gateway-front-external.nio.com/moat/10086/c/award_cn/checkin?app_id=10086&timestamp=${Date.now()}`,
-            headers: {
-                "authority": "gateway-front-external.nio.com",
-                "content-type": "application/x-www-form-urlencoded",
-                "accept": "application/json, text/plain, */*",
-                "authorization": 'Bearer ' + this.token,
-                "sec-fetch-site": "cross-site",
-                "priority": "u=3, i",
-                "accept-language": "zh-CN,zh-Hans;q=0.9",
-                "accept-encoding": "gzip, deflate, br",
-                "sec-fetch-mode": "cors",
-                "origin": "null",
-                "user-agent": defaultUserAgent,
-                "sec-fetch-dest": "empty"
-            },
-            data: "event=checkin"
-        };
-        let { data: result } = await axios.request(options);
-        if (result?.result_code == 'success') {
-            $.log(`🌸账号[${this.index}]` + `${result.data.tip}🎉`);
-        } else {
-            $.log(`🌸账号[${this.index}] 签到-失败:${JSON.stringify(result)}❌`)
-        }
+		await this.signIn()
+	}
 
+	async signIn() {
+		let options = {
+			url: `https://club.biqr.cn/api/signIn/integralSignIn`,
+			headers: {
+				"accept": "application/json, text/plain, */*",
+				"accept-language": "zh-CN,zh;q=0.9",
+				"content-type": "application/x-www-form-urlencoded;",
+				"sec-fetch-dest": "empty",
+				"sec-fetch-mode": "cors",
+				"sec-fetch-site": "cross-site",
+				"token": this.token,
+				"xweb_xhr": "1"
+			},
+			method: 'POST',
+			data: {}
+		}
+		let { data: result } = await axios.request(options);
+		if (result.code == 0) {
+			$.log(`账号[${this.index}]【${this.name}】 签到成功`);
+		} else {
+			$.log(result);
+
+		}
+	}
 
 
-
-    }
-    
 
 
 
@@ -83,15 +77,15 @@ class Task {
 }
 
 !(async () => {
-    await getNotice()
-    $.checkEnv(ckName);
+	await getNotice()
+	$.checkEnv(ckName);
 
-    for (let user of $.userList) {
-        await new Task(user).run();
-    }
+	for (let user of $.userList) {
+		await new Task(user).run();
+	}
 })()
-    .catch((e) => console.log(e))
-    .finally(() => $.done());
+	.catch((e) => console.log(e))
+	.finally(() => $.done());
 
 async function getNotice() {
 	try {
