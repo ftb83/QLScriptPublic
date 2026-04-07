@@ -5,8 +5,9 @@ on:
     branches:
       - main
     paths:
-      - '**/*.js'
-      - '**/*.py'
+      - 'daily/**'          # 仅监控 daily 目录下的变更
+      - '!daily/notify.py'  # 排除 notify.py
+      - '!daily/**/*.md'    # 排除 md 文件
 
 jobs:
   update-readme:
@@ -35,87 +36,81 @@ jobs:
           import datetime
           import subprocess
 
-          # 1. 获取更改的文件列表（最近一次提交）
+          # 1. 获取更改的文件列表
           try:
-              # 获取当前提交与上一次提交之间的差异文件
               diff_cmd = ['git', 'diff', '--name-only', 'HEAD~1', 'HEAD']
               result = subprocess.run(diff_cmd, capture_output=True, text=True, check=True)
               changed_files = result.stdout.splitlines()
           except subprocess.CalledProcessError:
-              # 如果没有上一次提交（例如第一次提交），则检查所有文件
               diff_cmd = ['git', 'diff', '--name-only', '--cached']
               result = subprocess.run(diff_cmd, capture_output=True, text=True, check=True)
               changed_files = result.stdout.splitlines()
           except Exception:
               changed_files = []
 
-          # 筛选出 .js 或 .py 且实际存在的文件
-          target_files = [f for f in changed_files if (f.endswith('.js') or f.endswith('.py')) and os.path.exists(f)]
+          # 2. 筛选逻辑：必须在 daily 目录下，且不是 notify.py 和 .md 文件
+          target_files = []
+          for f in changed_files:
+              # 检查文件是否在 daily 目录下且文件存在
+              if f.startswith('daily/') and os.path.exists(f):
+                  filename = os.path.basename(f)
+                  # 排除 notify.py 和所有 .md 后缀文件
+                  if filename != 'notify.py' and not f.endswith('.md'):
+                      target_files.append(f)
+
           if not target_files:
-              print("没有检测到相关脚本文件的变更，退出。")
+              print("没有检测到符合条件的脚本文件变更（排除 notify.py 和 md），退出。")
               exit(0)
 
-          # 2. 从变更文件中提取 Env 名称
+          # 3. 提取 Env 名称
           now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
           updates = {}
           for f in target_files:
               with open(f, 'r', encoding='utf-8') as file:
                   content = file.read()
-                  # 匹配 Env("名称") 或 Env('名称')
                   match = re.search(r'Env\s*\(\s*["\']([^"\']+)["\']\s*\)', content)
                   if match:
                       updates[match.group(1)] = now
 
           if not updates:
-              print("变更的脚本文件中未找到 Env 标签，退出。")
+              print("变更的脚本中未找到 Env 标签，退出。")
               exit(0)
 
-          # 3. 修改 README.md 中的表格
+          # 4. 修改 README.md
           readme_path = 'README.md'
+          if not os.path.exists(readme_path):
+              print("README.md 不存在！")
+              exit(1)
+
           with open(readme_path, 'r', encoding='utf-8') as f:
               full_text = f.read()
 
-          # 定义锚点标记（请确保 README.md 中已添加这两个注释）
-          start_tag = "<!-- README_TABLE_START -->"
-          end_tag   = "<!-- README_TABLE_END -->"
+          start_tag = ""
+          end_tag   = ""
 
           if start_tag not in full_text or end_tag not in full_text:
-              print("错误：在 README.md 中未找到锚点标记！")
-              print("请添加以下两行注释包裹表格区域：")
-              print(f"{start_tag}")
-              print(f"{end_tag}")
+              print("错误：未找到锚点标记！")
               exit(1)
 
-          # 分割文本
           pre_part, temp = full_text.split(start_tag)
           table_section, post_part = temp.split(end_tag)
 
-          # 解析现有表格
           lines = table_section.strip().split('\n')
-          header = []
-          separator = []
-          body_lines = []
+          header, separator, body_lines = [], [], []
           mode = 'header'
 
           for line in lines:
-              line_stripped = line.strip()
-              if not line_stripped.startswith('|'):
-                  continue
-              if '脚本名称' in line_stripped:
+              l_s = line.strip()
+              if not l_s.startswith('|'): continue
+              if '脚本名称' in l_s:
                   header.append(line)
                   mode = 'separator'
-              elif '---' in line_stripped and mode == 'separator':
+              elif '---' in l_s and mode == 'separator':
                   separator.append(line)
                   mode = 'body'
-              else:
-                  if mode == 'body':
-                      body_lines.append(line)
+              elif mode == 'body':
+                  body_lines.append(line)
 
-          if not header or not separator:
-              print("错误：README 表格格式无效，缺少表头或分隔行。")
-              exit(1)
-
-          # 更新已有行，并记录已存在的脚本名称
           existing_names = set()
           new_body_lines = []
           for line in body_lines:
@@ -127,20 +122,16 @@ jobs:
                       line = f"| {name} | {updates[name]} | ✅ |"
               new_body_lines.append(line)
 
-          # 添加新增的脚本
           for name, tm in updates.items():
               if name not in existing_names:
                   new_body_lines.append(f"| {name} | {tm} | ✅ |")
 
-          # 重新组合完整表格
           final_table = "\n".join(header + separator + new_body_lines)
           final_content = f"{pre_part}{start_tag}\n{final_table}\n{end_tag}{post_part}"
 
-          # 写回 README.md
           with open(readme_path, 'w', encoding='utf-8') as f:
               f.write(final_content)
-
-          print("README.md 表格更新成功。")
+          print("README.md 更新成功。")
           EOF
 
           python update_readme.py
@@ -151,8 +142,8 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add README.md
           if ! git diff --staged --quiet; then
-            git commit -m "docs: 自动更新脚本状态 [skip ci]"
+            git commit -m "docs: 自动更新 daily 脚本状态 [skip ci]"
             git push
           else
-            echo "README.md 无变更，无需提交。"
+            echo "无变更需推送。"
           fi
