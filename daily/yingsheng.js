@@ -5,6 +5,9 @@
 @Description: 硬声APP的自动化任务程序
 cron: 12 12 * * *
 ------------------------------------------
+yingsheng
+账号#密码 或者 请求头authorization#userid
+多账户&或换行
 #Notice:
 ⚠️【免责声明】
 ------------------------------------------
@@ -33,6 +36,7 @@ class Task {
     constructor(env) {
         this.index = $.userIdx++
         let user = env.split(strSplitor);
+
         this.name = user[0];
         this.passwd = user[1];
         this.auth = '';
@@ -81,7 +85,17 @@ class Task {
     }
     async run() {
         console.log(`\n============= 账号[${this.name}] =============`)
-        await this.login();
+        //检测如果this.name 如果不是11位手机号 并且是数字
+        if (this.name.length == 11 && !isNaN(this.name)) {
+            await this.login();
+        } else {
+            this.auth = this.name
+            this.valid = true
+            this.user_id = this.passwd
+        }
+
+
+
         if (!this.valid) return;
         console.log(`----------- 签到 -----------`)
         await $.wait(this.TASK_WAIT_TIME);
@@ -498,19 +512,19 @@ class Task {
     .finally(() => $.done());
 
 async function getNotice() {
-	try {
-		let options = {
-			url: `https://ghproxy.net/https://raw.githubusercontent.com/smallfawn/Note/refs/heads/main/Notice.json`,
-			headers: {
-				"User-Agent": defaultUserAgent,
-			},
-            timeout:3000
-		}
-		let {
-			data: res
-		} = await axios.request(options);
-		$.log(res)
-		return res
-	} catch (e) {}
+    try {
+        let options = {
+            url: `https://ghproxy.net/https://raw.githubusercontent.com/smallfawn/Note/refs/heads/main/Notice.json`,
+            headers: {
+                "User-Agent": defaultUserAgent,
+            },
+            timeout: 3000
+        }
+        let {
+            data: res
+        } = await axios.request(options);
+        $.log(res)
+        return res
+    } catch (e) { }
 
 }
