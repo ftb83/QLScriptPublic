@@ -167,7 +167,7 @@ class Task {
 !(async () => {
     await getNotice()
     $.checkEnv(ckName);
-    if (process.env['wx_server_url'] && process.env['wx_auth']) {
+    if (process.env['wx_server_url'] && process.env['wx_auth'] && process.env['wx_app'].indexOf(ckName) !== -1) {
         $.userList = ['test']
     }
     for (let user of $.userList) {

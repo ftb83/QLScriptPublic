@@ -1,14 +1,15 @@
+
 /*
 ------------------------------------------
 @Author: sm
 @Date: 2024.06.07 19:15
 @Description:  
-cron: 30 9 * * *
+cron: 30 9 * * 1
 ------------------------------------------
 #Notice:   
-谢瑞麟 微信小程序 签到得积分 
+可口可乐 微信小程序 签到得积分 
 WeChatCodeServer 填写wx_server_url wx_auth 用于获取code 
-变量名称：tslj
+变量名称：kekoukele
 ⚠️【免责声明】
 ------------------------------------------
 1、此脚本仅用于学习研究，不保证其合法性、准确性、有效性，请根据情况自行判断，本人对此不承担任何保证责任。
@@ -23,15 +24,15 @@ WeChatCodeServer 填写wx_server_url wx_auth 用于获取code
 const {
     Env
 } = require("../tools/env")
-const $ = new Env("谢瑞麟小程序签到");
+const $ = new Env("可口可乐小程序");
 const WeChatCodeServer = require("wechat-mini-server");
-let ckName = `tslj`;
+let ckName = `kekoukele`;
 const strSplitor = "#";
 const axios = require("axios");
 const defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.31(0x18001e31) NetType/WIFI Language/zh_CN miniProgram"
 let wechat = new WeChatCodeServer({
     url: process.env.wx_server_url || 'http://192.168.31.196:12081',
-    appid: 'wx439d0e0cc6742818',
+    appid: 'wxa5811e0426a94686',
     auth: process.env.wx_auth || "your-api-key",
 
 }
@@ -55,101 +56,94 @@ class Task {
             $.log(`账号[${this.index}] 获取用户Token失败❌`)
             return
         }
-        this.token = 'Bearer ' + this.token
-
-        await this.getUserInfo()
-        if (!this.isSign) await this.doSign()
+        await this.userInfo()
+        if (!this.isSign) await this.addSign()
     }
     async getUserToken(code) {
         let options = {
-            method: 'POST',
-            url: `https://tslmember-crm.tslj.com.cn/api/auth/login`,
+            method: 'GET',
+            url: 'https://member-api.icoke.cn/api/sp-portal/store/icoke/wechat/loginNoCache/' + code,
             headers: {
-                "accept": "*/*",
-                "accept-language": "zh-CN,zh;q=0.9",
-                "content-type": "application/json",
-
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781 NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF XWEB/50249"
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781 NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF XWEB/50249',
+                'Accept': 'application/json, text/plain, */*',
+                'xweb_xhr': '1',
+                'Content-Type': 'application/json',
+                'Sec-Fetch-Site': 'cross-site',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Dest': 'empty',
+                'Referer': 'https://servicewechat.com/wxa5811e0426a94686/496/page-frame.html',
+                'Accept-Language': 'zh-CN,zh;q=0.9'
             }
-            ,
-            data:
-                { "code": code }
-        }
+        };
+
         let {
             data: result
         } = await axios.request(options);
 
-        if (result?.code == '0') {
-            this.token = result.data.user_info.token
-            this.openid = result.data.user_info.openid
+        if (result?.jwtString) {
+            this.token = result?.jwtString
             $.log(`🌸账号[${this.index}] 获取用户Token成功:${this.token}`)
         } else {
-            $.log(`🌸账号[${this.index}] 获取用户Token-失败:${result.msg}❌`)
+            $.log(`🌸账号[${this.index}] 获取用户Token-失败:${result.message}❌`)
         }
     }
-    async getUserInfo() {
+    async addSign() {
         let options = {
-            method: 'POST',
-            url: `https://tslmember-crm.tslj.com.cn/api/user/index`,
+            method: "GET",
+            url: "https://member-api.icoke.cn/api/icoke-sign/icoke/mini/sign/main/sign",
             headers: {
-                "accept": "*/*",
+                "accept": "application/json, text/plain, */*",
                 "accept-language": "zh-CN,zh;q=0.9",
-                "authorization": "" + this.token + "",
-                "content-type": "application/x-www-form-urlencoded",
-                "priority": "u=1, i",
+                "authorization": "" + this.token,
+                "content-type": "application/json",
                 "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
                 "sec-fetch-site": "cross-site",
-                "user-agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254173b) XWEB/19027'
+                "xweb_xhr": "1",
+                "Referer": "https://servicewechat.com/wxa5811e0426a94686/421/page-frame.html",
+                "Referrer-Policy": "unsafe-url"
             },
-            data: { "openid": this.openid }
+
         }
-        let {
-            data: result
-        } = await axios.request(options);
-        if (result?.code == '0') {
-            //打印签到结果
-            $.log(`🌸账号[${this.index}]` + `[${result.data.mobile}] 积分[${result.data.integral}]🎉`);
-            for (let task of result.data.task_list) {
-                if (task.name == '每日签到') {
-                    this.isSign = task.status
-                }
+        try {
+            let { data: res } = await axios.request(options);
+            if (res.success == true) {
+                $.log(`签到成功 获得【${res.point}】快乐瓶`)
+            } else {
+                $.log(`签到失败`)
+                console.log(res);
             }
-        } else {
-            $.log(`🌸账号[${this.index}] 获取用户信息-失败:${result.msg}❌`)
+        } catch (e) {
+            console.log(e);
+
         }
     }
-
-    async doSign() {
+    async userInfo() {
         let options = {
-            method: 'POST',
-            url: `https://tslmember-crm.tslj.com.cn/api/userSignIn/signIn`,
+            method: "GET",
+            url: "https://member-api.icoke.cn/api/icoke-customer/icoke/mini/customer/main/points",
             headers: {
-                "accept": "*/*",
+                "accept": "application/json, text/plain, */*",
                 "accept-language": "zh-CN,zh;q=0.9",
-                "authorization": "" + this.token + "",
-                "content-type": "application/x-www-form-urlencoded",
-                "priority": "u=1, i",
+                "authorization": "" + this.token,
+                "content-type": "application/json",
                 "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
-                "sec-fetch-site": "cross-site"
+                "sec-fetch-site": "cross-site",
+                "xweb_xhr": "1",
+                "Referer": "https://servicewechat.com/wxa5811e0426a94686/421/page-frame.html",
+                "Referrer-Policy": "unsafe-url"
             },
-            data: { "openid": `${this.openid}` }
-        };
-        let {
-            data: result
-        } = await axios.request(options);
-        if (result?.code == '0') {
-            //打印签到结果
-            const { integral, total_days } = result?.data;
-            $.log(`签到成功, 已连续签到 ${total_days} 天, 获得 ${integral} 积分 🎉`);
-        } else {
-            $.log(`🌸账号[${this.index}] 签到-失败:${result.msg}❌`)
+
         }
+        try {
+            let { data: res } = await axios.request(options);
+            $.log(`目前还剩【${res.point}】瓶 `)
 
+        } catch (e) {
+            console.log(e);
 
-
-
+        }
     }
 
 
@@ -164,7 +158,7 @@ class Task {
 !(async () => {
     await getNotice()
     $.checkEnv(ckName);
-    if (process.env['wx_server_url'] && process.env['wx_auth'] && process.env['wx_app'].indexOf(ckName) !== -1) {
+    if (process.env['wx_server_url'] && process.env['wx_auth'] && process.env['wx_app'].indexOf(ckName) !== -1 && process.env['wx_app'].indexOf(ckName) !== -1) {
         $.userList = ['test']
     }
     for (let user of $.userList) {
