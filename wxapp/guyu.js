@@ -26,12 +26,12 @@ const {
     Env
 } = require("../tools/env")
 const $ = new Env("谷雨小程序");
-const WeChatCodeServer = require("./wcs.js");
+const WeChatServer = require("./wcs.js");
 let ckName = `guyu`;
 const strSplitor = "#";
 const axios = require("axios");
 const defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.31(0x18001e31) NetType/WIFI Language/zh_CN miniProgram"
-let wechat = new WeChatCodeServer({
+let wechat = new WeChatServer({
     url: process.env.wx_server_url || 'https://xxx',
     appid: 'wxda948f3be0afc375',
     auth: process.env.wx_auth || "",
@@ -44,13 +44,13 @@ class Task {
         this.index = $.userIdx++
         this.user = env.split(strSplitor);
         this.token = null
-        this.openid = this.user[0]
+        this.wcsid = this.user[0]
         this.isSign = false
     }
 
     async run() {
-        await wechat.init(this.openid)
-        let { data: codeRes } = await wechat.getCode(this.openid)
+        await wechat.init(this.wcsid)
+        let { data: codeRes } = await wechat.getCode(this.wcsid)
         if (codeRes.status) {
             await this.getUserToken(codeRes.data.code)
         }
@@ -60,7 +60,7 @@ class Task {
         }
         await this.signIn()
         await this.getUserPoints()
-        await wechat.close(this.openid)
+        await wechat.close(this.wcsid)
     }
     async getUserToken(code) {
         let data = JSON.stringify({
@@ -223,9 +223,7 @@ class Task {
             await new Task(user).run();
         }
     } else {
-        for (let user of $.userList) {
-            await new Task(user).run();
-        }
+        
         $.log(`${ckName}未配置微信SERVER配置 搭建可看仓库目录下的readme.md❌`)
         return
     }
