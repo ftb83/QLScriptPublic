@@ -25,12 +25,12 @@ const {
     Env
 } = require("../tools/env")
 const $ = new Env("臭宝乐园");
-const WeChatCodeServer = require("wechat-mini-server");
+const WeChatServer = require("./wcs.js");
 let ckName = `choubaoleyuan`;
 const strSplitor = "#";
 const axios = require("axios");
 const defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.31(0x18001e31) NetType/WIFI Language/zh_CN miniProgram"
-let wechat = new WeChatCodeServer({
+let wechat = new WeChatServer({
     url: process.env.wx_server_url || 'http://192.168.31.196:12081',
     appid: 'wx2206cca563f6f937',
     auth: process.env.wx_auth || "your-api-key",
@@ -42,11 +42,13 @@ class Task {
     constructor(env) {
         this.index = $.userIdx++
         this.user = env.split(strSplitor);
-        this.token = this.user[0]
+
+        this.wcsid = this.user[0]
     }
 
     async run() {
-        let { data: codeRes } = await wechat.GetMiniCode()
+        await wechat.init(this.wcsid)
+        let { data: codeRes } = await wechat.getCode(this.wcsid)
         if (codeRes.status) {
             await this.getUserToken(codeRes.data.code)
         }
@@ -58,6 +60,7 @@ class Task {
         await this.getUserInfo()
         await this.track()
         await this.checkSign()
+        await wechat.close(this.wcsid)
     }
     async getUserToken(code) {
         let options = {
@@ -208,19 +211,19 @@ class Task {
 !(async () => {
     await getNotice()
     $.checkEnv(ckName);
-    if (process.env['wx_server_url'] && process.env['wx_auth'] ) {
-        $.userList = ['test']
+    if (process.env['wx_server_url'] && process.env['wx_auth']) {
+        for (let user of $.userList) {
+            await new Task(user).run();
+        }
     } else {
+        
         $.log(`${ckName}未配置微信SERVER配置 搭建可看仓库目录下的readme.md❌`)
-
-    } 
-    for (let user of $.userList) {
-        await new Task(user).run();
+        return
     }
+
 })()
     .catch((e) => console.log(e))
     .finally(() => $.done());
-
 async function getNotice() {
     try {
         let options = {
